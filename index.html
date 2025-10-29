@@ -7,71 +7,113 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-        /* Set the map container size */
         #map { 
             height: 650px; 
             width: 100%; 
         }
-        /* Hide Leaflet attribution on non-tiled maps */
         .leaflet-control-attribution { 
             display: none; 
         }
+
+        /* === Popup Customization === */
+        .leaflet-popup {
+            margin-bottom: 8px; /* closer to marker */
+        }
+
+        .leaflet-popup-content-wrapper {
+            padding: 2px 4px;         /* smaller popup box */
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            font-size: 14px;          /* larger text */
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .leaflet-popup-content a {
+            text-decoration: none;
+            color: #222;
+        }
+
+        .leaflet-popup-content a:hover {
+            color: #0078ff;
+        }
+
+        /* Hide close (×) button */
+        .leaflet-popup-close-button {
+            display: none !important;
+        }
+
+        .empty-icon {
+    background: none;
+    border: none;
+    width: 0;
+    height: 0;
+}
+
     </style>
 </head>
 <body>
     <div id="map"></div>
+
 <script>
     // *** CONFIGURATION ***
     var imageUrl = 'https://i.imgur.com/qkoMqpl.jpeg', 
         imageWidth = 3300,
         imageHeight = 2550,
-        // Bounds are defined as [[Y_min, X_min], [Y_max, X_max]]
         imageBounds = [[0, 0], [imageHeight, imageWidth]];
 
     // *** LEAFLET SETUP ***
     var map = L.map('map', {
-        crs: L.CRS.Simple, // Use simple pixel coordinates
+        crs: L.CRS.Simple,
         minZoom: -2, 
-        maxZoom: 2,  
+        maxZoom: 2,
     });
     map.fitBounds(imageBounds);
     L.imageOverlay(imageUrl, imageBounds).addTo(map);
 
-    // *** MARKER DATA & PLACEMENT ***
-var markers = [
-    // [Y-coordinate, X-coordinate, "Title", "Link URL"]
-    [769.8035, 1264.3069, "Teatro Fenaxicón", "https://teros.vercel.app/lugares/teatro-fenaxicon/"],
-    [1841.3334, 3020.0000, "Gran Estadio", "https://teros.vercel.app/lugares/gran-estadio/"],
-    [1222.1162, 1955.8574, "Dekatia", "https://teros.vercel.app/lugares/dekatia/"],
-    [935.8558, 1669.3613, "Templo del Conocimiento", "https://teros.vercel.app/lugares/templo-del-conocimiento/"],
-    [1265.0140, 1443.9120, "Ágora", "https://teros.vercel.app/lugares/agora/"],
-    [620.8333, 313.6666, "Gran Templo del Sol", "https://teros.vercel.app/lugares/gran-templo-del-sol/"],
-    [1897.6038, 446.4951, "Bastión Reverente", "https://teros.vercel.app/lugares/bastion-reverente/"],
-    [1696.3491, 292.0351, "Necrópolis", "https://teros.vercel.app/lugares/necropolis/"],
-    [2447.3334, 283.3333, "Santuario de la Cosecha", "https://teros.vercel.app/lugares/santuario-de-la-cosecha/"],
-    [929.1382, 968.7363, "Ministerio de los Doce", "https://teros.vercel.app/lugares/ministerio-de-los-doce/"],
-    [892.6666, 2084.3333, "Templo de las Olas", "https://teros.vercel.app/lugares/templo-de-las-olas/"],
-    [779.1667, 1720.5000, "Puerto", "https://teros.vercel.app/lugares/puerto/"],
-    [1305.3333, 3106.0000, "Teatro Agorrus", "https://teros.vercel.app/lugares/teatro-agorrus/"],
-    [2353.3334, 1439.3335, "Observatorio", "https://teros.vercel.app/lugares/observatorio/"],
-];
+    // *** MARKER DATA ***
+    var markers = [
+        [769.8035, 1264.3069, "Teatro Fenaxicón", "https://teros.vercel.app/lugares/teatro-fenaxicon/"],
+        [1841.3334, 3020.0000, "Gran Estadio", "https://teros.vercel.app/lugares/gran-estadio/"],
+        [1222.1162, 1955.8574, "Dekatia", "https://teros.vercel.app/lugares/dekatia/"],
+        [995.8558, 1669.3613, "Templo del Conocimiento", "https://teros.vercel.app/lugares/templo-del-conocimiento/"],
+        [1265.0140, 1443.9120, "Ágora", "https://teros.vercel.app/lugares/agora/"],
+        [620.8333, 313.6666, "Gran Templo del Sol", "https://teros.vercel.app/lugares/gran-templo-del-sol/"],
+        [1897.6038, 446.4951, "Bastión Reverente", "https://teros.vercel.app/lugares/bastion-reverente/"],
+        [1696.3491, 292.0351, "Necrópolis", "https://teros.vercel.app/lugares/necropolis/"],
+        [2447.3334, 283.3333, "Santuario de la Cosecha", "https://teros.vercel.app/lugares/santuario-de-la-cosecha/"],
+        [929.1382, 968.7363, "Ministerio de los Doce", "https://teros.vercel.app/lugares/ministerio-de-los-doce/"],
+        [892.6666, 2084.3333, "Templo de las Olas", "https://teros.vercel.app/lugares/templo-de-las-olas/"],
+        [779.1667, 1720.5000, "Puerto", "https://teros.vercel.app/lugares/puerto/"],
+        [1305.3333, 3106.0000, "Teatro Agorrus", "https://teros.vercel.app/lugares/teatro-agorrus/"],
+        [2353.3334, 1439.3335, "Observatorio", "https://teros.vercel.app/lugares/observatorio/"],
+    ];
 
-
+    // *** ADD MARKERS ***
     markers.forEach(function(markerData) {
         var y = markerData[0];
         var x = markerData[1];
         var title = markerData[2];
         var link = markerData[3];
 
-        // Create the HTML content: the title as a link that opens in the parent window
         var popupContent = '<a href="' + link + '" target="_top">' + title + '</a>';
 
-        L.marker([y, x])
-            .bindPopup(popupContent, {
-                permanent: true, // Make the popup stick to the marker
-                direction: 'top' // Position the popup above the marker
-            })
-            .addTo(map)
+L.marker([y, x], {
+        icon: L.divIcon({ className: 'empty-icon' }) // 👈 invisible icon
+    })
+    .bindPopup(popupContent, {
+        closeButton: false,
+        autoClose: false,
+        closeOnClick: false
+    })
+    .addTo(map)
+    .openPopup();
+
     });
 </script>
 </body>
