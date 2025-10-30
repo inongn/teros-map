@@ -1,0 +1,17 @@
+{
+  "name": "Microsoft Teams",
+  "short_name": "Teams",
+  "icons": [{
+      "src": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Microsoft_Teams_Icon_2025_en.svg/1200px-Microsoft_Teams_Icon_2025_en.svg.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }, {
+      "src": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Microsoft_Teams_Icon_2025_en.svg/1200px-Microsoft_Teams_Icon_2025_en.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }],
+  "start_url": "https://teams.microsoft.com/?clientType=pwa",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#6264A7"
+}
