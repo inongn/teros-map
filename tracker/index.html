@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Initiative Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --surface:#FAFAFA; --surface-2:#f4f4f4; --outline:#dadce0; --outline-2:#c9cdd3;
+      --text:#1f1f1f; --text-muted:#5f6368; --primary:#6750a4; --primary-ink:#fff;
+      --focus:rgba(103,80,164,.25); --danger:#b3261e; --danger-ink:#fff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--text);background:var(--surface);line-height:1.35}
+
+    .wrap{max-width:960px;margin:0px auto;padding:0 16px}
+    .header{padding:16px 18px;border-bottom:0px solid var(--outline);display:flex;align-items:center;gap:12px;justify-content:space-between}
+    .btn{appearance:none;border:1px solid var(--outline-2);background:var(--surface);color:var(--text);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+    .btn:hover{background:var(--surface-2)}
+    .btn:focus{outline:none;box-shadow:0 0 0 4px var(--focus)}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+    .btn.danger{background:var(--danger);border-color:var(--danger);color:var(--danger-ink)}
+    .btn.tonal{background:#ece6f6;border-color:#ece6f6;color:#3d2a72}
+
+    .table{width:100%;padding:12px 12px 8px 12px}
+    .th{display:none;}
+    .row{display:grid;grid-template-columns: 60px 1.2fr 60px 60px 44px;align-items:center;border-radius:12px;}
+    .td{padding:0 4px}
+    input{width:100%;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:10px;padding:9px 10px;outline:none}
+    input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--focus)}
+    input[disabled]{opacity:.7;cursor:not-allowed}
+
+    /* Modal (picker) */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;padding:20px}
+    .modal{width:min(820px,100%);max-height:min(80vh,820px);overflow:auto;background:var(--surface);border:1px solid var(--outline);border-radius:14px}
+    .modal-head{padding:12px 14px;border-bottom:1px solid var(--outline);display:flex;gap:10px;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1}
+    .modal-body{padding:10px 12px 16px}
+    .search{width:100%}
+    .sb-item{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--outline);border-radius:12px;padding:10px 12px;background:var(--surface)}
+    .sb-name{font-weight:600}
+    .sb-url{font-size:12px;color:var(--text-muted);word-break:break-all}
+    .hint{color:var(--text-muted);font-size:12px}
+
+    /* Preview */
+    .preview{margin-top:16px;border:0px solid var(--outline);border-radius:12px;overflow:hidden}
+    .preview-head{display:none}
+    .preview-body{height:580px;background:var(--surface)}
+    .preview iframe{border:0;width:100%;height:100%}
+    .preview-empty{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted);font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="openPicker" class="btn tonal">Pick from sitemap</button>
+        <button id="addRow" class="btn">Add row</button>
+        <button id="clearRows" class="btn danger">Clear</button>
+      </div>
+    </div>
+
+    <div class="table" role="table" aria-label="initiative table">
+      <div style="display:grid;grid-template-columns: 60px 1.2fr 60px 60px 44px;">
+        <div class="th">Init</div><div class="th">Name</div><div class="th">AC</div><div class="th">HP</div><div class="th"></div>
+      </div>
+      <div id="rows"></div>
+    </div>
+
+    <!-- Preview area (new) -->
+    <div class="preview" id="preview">
+      <div class="preview-head">
+        <div id="previewLabel">No row selected</div>
+        <div id="previewUrl" class="hint"></div>
+      </div>
+      <div class="preview-body" id="previewBody">
+        <div class="preview-empty">Select a row (or add from sitemap) to preview its page.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Picker Modal -->
+  <div id="pickerBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+      <div class="modal-head">
+        <div style="font-weight:650" id="pickerTitle">Choose a statblock</div>
+        <input class="search" id="pickerSearch" placeholder="Search by name or URL…" />
+        <button id="closePicker" class="btn">Close</button>
+      </div>
+      <div class="modal-body">
+        <div id="pickerList" style="display:grid;gap:10px"></div>
+        <div id="pickerHint" class="hint" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Utilities =====
+    function nameFromUrl(u) {
+      try {
+        const str = String(u || "");
+        let path = str;
+        const schemeIdx = str.indexOf("://");
+        if (schemeIdx !== -1) {
+          const afterDomain = str.slice(schemeIdx + 3);
+          const firstSlash = afterDomain.indexOf("/");
+          path = firstSlash === -1 ? "/" : afterDomain.slice(firstSlash);
+        }
+        const marker = "/statblocks/";
+        const mIdx = path.toLowerCase().indexOf(marker);
+        let slug = mIdx !== -1 ? path.slice(mIdx + marker.length) : path;
+        if (slug.endsWith("/")) slug = slug.slice(0, -1);
+        if (slug.includes("/")) slug = slug.split("/")[0];
+        if (slug.toLowerCase().endsWith(".json")) slug = slug.slice(0, -5);
+        const decoded = decodeURIComponent(slug);
+        const spaced = decoded.split("-").join(" ").split("_").join(" ");
+        const parts = spaced.trim().split(" ").filter(Boolean);
+        const titled = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        return titled || str;
+      } catch { return String(u || ""); }
+    }
+    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const rollD20 = (mod) => randInt(1,20) + (Number(mod)||0);
+    const firstInt = (s) => { const m = String(s||"").match(/-?\d+/); return m ? parseInt(m[0], 10) : null; };
+    const absoluteUrl = (u) => {
+      const s = String(u||"").trim();
+      if (!s) return "";
+      if (/^https?:\/\//i.test(s)) return s;
+      // treat as site-relative path from teros-dm
+      return "https://teros-dm.vercel.app" + (s.startsWith("/") ? s : ("/" + s));
+    };
+
+    // ===== App State =====
+    let nextId = 5;
+    let rows = [
+      { id: 1, score: "", name: "", ac: "", hp: "", url: "" },
+      { id: 2, score: "", name: "", ac: "", hp: "", url: "" },
+      { id: 3, score: "", name: "", ac: "", hp: "", url: "" },
+      { id: 4, score: "", name: "", ac: "", hp: "", url: "" },
+    ];
+    let statblocks = []; // { url, name }
+    let pickerOpen = false;
+    let selectedRowId = null;
+
+    // ===== DOM =====
+    const rowsRoot = document.getElementById("rows");
+    const openPickerBtn = document.getElementById("openPicker");
+    const clearBtn = document.getElementById("clearRows");
+    const addRowBtn = document.getElementById("addRow");
+    const pickerBackdrop = document.getElementById("pickerBackdrop");
+    const pickerSearch = document.getElementById("pickerSearch");
+    const pickerList = document.getElementById("pickerList");
+    const pickerHint = document.getElementById("pickerHint");
+    const closePickerBtn = document.getElementById("closePicker");
+
+    const previewBody = document.getElementById("previewBody");
+    const previewLabel = document.getElementById("previewLabel");
+    const previewUrl = document.getElementById("previewUrl");
+
+    // ===== Render =====
+    function renderRows() {
+      rowsRoot.innerHTML = "";
+      rows.forEach((r) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "row";
+        wrapper.setAttribute("role", "row");
+        wrapper.tabIndex = 0;
+        wrapper.setAttribute("aria-selected", String(r.id === selectedRowId));
+
+        // select on click
+        wrapper.addEventListener("click", () => selectRow(r.id));
+
+        const td = () => { const d = document.createElement("div"); d.className = "td"; return d; };
+        const input = (value, placeholder, type = "text") => {
+          const el = document.createElement("input");
+          el.value = value ?? "";
+          el.placeholder = placeholder || "";
+          el.type = type;
+          return el;
+        };
+
+        // Init
+        const cScore = td();
+        const iScore = input(r.score, "roll", "number");
+        iScore.addEventListener("input", (e) => updateField(r.id, "score", e.target.value));
+        cScore.appendChild(iScore);
+
+        // Name
+        const cName = td();
+        const iName = input(r.name, "Creature or PC");
+        iName.addEventListener("input", (e) => updateField(r.id, "name", e.target.value));
+        cName.appendChild(iName);
+
+        // AC
+        const cAC = td();
+        const iAC = input(r.ac, "AC", "number");
+        iAC.addEventListener("input", (e) => updateField(r.id, "ac", e.target.value));
+        cAC.appendChild(iAC);
+
+        // HP
+        const cHP = td();
+        const iHP = input(r.hp, "HP");
+        iHP.addEventListener("input", (e) => updateField(r.id, "hp", e.target.value));
+        cHP.appendChild(iHP);
+
+        // Actions
+        const cAct = td();
+        const del = document.createElement("button");
+        del.className = "btn";
+        del.textContent = "✕";
+        del.title = "Delete row";
+        del.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          rows = rows.filter(x => x.id !== r.id);
+          if (selectedRowId === r.id) selectedRowId = null;
+          renderRows();
+          renderPreview();
+        });
+        cAct.appendChild(del);
+
+        [cScore, cName, cAC, cHP, cAct].forEach(c => wrapper.appendChild(c));
+        rowsRoot.appendChild(wrapper);
+      });
+    }
+
+    function sortByScoreDesc(arr) {
+      return [...arr].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    }
+
+    function updateField(id, field, value) {
+      rows = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
+      if (field === "score") rows = sortByScoreDesc(rows);
+      renderRows();
+      if (id === selectedRowId && field === "url") renderPreview();
+    }
+
+    function selectRow(rowId) {
+      selectedRowId = rowId;
+      renderRows();
+      renderPreview();
+    }
+
+    function findNextEmptyRow(arr) {
+      return arr.findIndex(r => !(r.name || "").trim());
+    }
+
+    // ===== Hydrate from URL (expects <span id="in">, <span id="ac">, <span id="hp">) =====
+    async function hydrateFromUrl(rowId, url) {
+      const row = rows.find(r => r.id === rowId);
+      if (!row || !url) return;
+      try {
+        const res = await fetch(absoluteUrl(url)); // requires CORS allowed by target
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        const getText = (id) => {
+          const el = doc.getElementById(id);
+          return el ? (el.textContent || "").trim() : null;
+        };
+
+        const inText = getText("in");
+        const acText = getText("ac");
+        const hpText = getText("hp");
+
+        const acVal = acText != null ? firstInt(acText) : null;
+        const hpVal = hpText != null ? firstInt(hpText) : null;
+
+        let scoreVal = row.score;
+        if (inText != null) {
+          const inMod = firstInt(inText) ?? 0;
+          scoreVal = rollD20(inMod);
+        }
+
+        rows = rows.map(r => r.id === rowId ? {
+          ...r,
+          score: scoreVal !== undefined && scoreVal !== null ? String(scoreVal) : r.score,
+          ac: acVal !== null && acVal !== undefined ? String(acVal) : r.ac,
+          hp: hpVal !== null && hpVal !== undefined ? String(hpVal) : r.hp,
+        } : r);
+
+        rows = sortByScoreDesc(rows);
+        renderRows();
+        if (selectedRowId === rowId) renderPreview();
+      } catch (err) {
+        console.warn("Could not hydrate from URL (CORS or parsing issue):", err);
+      }
+    }
+
+    // ===== Picker =====
+    function openPicker() {
+      pickerOpen = true;
+      pickerBackdrop.style.display = "flex";
+      pickerSearch.value = "";
+      renderPicker();
+      setTimeout(() => pickerSearch.focus(), 30);
+    }
+    function closePicker() {
+      pickerOpen = false;
+      pickerBackdrop.style.display = "none";
+    }
+
+    function renderPicker() {
+      const q = pickerSearch.value.trim().toLowerCase();
+      const results = q
+        ? statblocks.filter(sb =>
+            (sb.name || "").toLowerCase().includes(q) ||
+            (sb.url || "").toLowerCase().includes(q))
+        : statblocks;
+
+      pickerList.innerHTML = "";
+      results.slice(0, 400).forEach(sb => {
+        const item = document.createElement("div");
+        item.className = "sb-item";
+        const left = document.createElement("div");
+        const nm = document.createElement("div");
+        nm.className = "sb-name";
+        nm.textContent = sb.name || nameFromUrl(sb.url);
+        const ur = document.createElement("div");
+        ur.className = "sb-url";
+        ur.textContent = sb.url;
+        left.appendChild(nm); left.appendChild(ur);
+
+        const add = document.createElement("button");
+        add.className = "btn primary";
+        add.textContent = "Add";
+        add.addEventListener("click", () => selectStatblock(sb));
+
+        item.appendChild(left); item.appendChild(add);
+        pickerList.appendChild(item);
+      });
+
+      const shown = Math.min(results.length, 400);
+      pickerHint.textContent =
+        results.length === 0 ? "No matches. Try different keywords."
+                             : `Showing ${shown.toLocaleString()} of ${results.length.toLocaleString()} matches.`;
+    }
+
+    function selectStatblock(sb) {
+      const displayName = sb.name || nameFromUrl(sb.url);
+      const idx = findNextEmptyRow(rows);
+      let targetId;
+      if (idx === -1) {
+        const newRow = { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" };
+        rows.push(newRow);
+        targetId = newRow.id;
+      } else {
+        targetId = rows[idx].id;
+      }
+
+      rows = rows.map((r) => r.id === targetId ? { ...r, name: displayName, url: sb.url } : r);
+      selectRow(targetId);          // auto-select newly filled row
+      closePicker();
+      hydrateFromUrl(targetId, sb.url);
+    }
+
+    // ===== Load sitemap =====
+    async function loadStatblocks() {
+      try {
+        const res = await fetch("https://teros-dm.vercel.app/sitemap.xml");
+        const text = await res.text();
+        const doc = new window.DOMParser().parseFromString(text, "application/xml");
+        const locNodes = Array.from(doc.getElementsByTagName("loc"));
+        const locs = locNodes.map(n => (n.textContent || "").trim()).filter(Boolean);
+        const filtered = locs.filter(u => u.includes("/statblocks/"));
+        const unique = Array.from(new Set(filtered));
+        const mapped = unique.map(url => ({ url, name: nameFromUrl(url) }));
+        statblocks = mapped.sort((a, b) => a.name.localeCompare(b.name));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // ===== Preview =====
+    function renderPreview() {
+      const row = rows.find(r => r.id === selectedRowId);
+      previewBody.innerHTML = "";
+      if (!row) {
+        previewLabel.textContent = "No row selected";
+        previewUrl.textContent = "";
+        const empty = document.createElement("div");
+        empty.className = "preview-empty";
+        empty.textContent = "Select a row (or add from sitemap) to preview its page.";
+        previewBody.appendChild(empty);
+        return;
+      }
+
+      const url = absoluteUrl(row.url);
+      previewLabel.textContent = row.name || "Selected row";
+      previewUrl.textContent = url || "";
+
+      if (!url) {
+        const empty = document.createElement("div");
+        empty.className = "preview-empty";
+        empty.textContent = "This row has no URL.";
+        previewBody.appendChild(empty);
+        return;
+      }
+
+      const frame = document.createElement("iframe");
+      // sandbox for safety; allow-same-origin often needed to render styles; remove if not desired
+      frame.setAttribute("sandbox", "allow-same-origin allow-forms allow-scripts");
+      frame.setAttribute("src", url);
+      frame.addEventListener("error", () => {
+        const msg = document.createElement("div");
+        msg.className = "preview-empty";
+        msg.textContent = "The site blocked embedding in an iframe.";
+        previewBody.innerHTML = "";
+        previewBody.appendChild(msg);
+      });
+      previewBody.appendChild(frame);
+    }
+
+    // ===== Wire up =====
+    openPickerBtn.addEventListener("click", openPicker);
+    closePickerBtn.addEventListener("click", closePicker);
+    pickerBackdrop.addEventListener("click", (e) => { if (e.target === pickerBackdrop) closePicker(); });
+    pickerSearch.addEventListener("input", renderPicker);
+    pickerSearch.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const q = pickerSearch.value.trim().toLowerCase();
+        const first = (q
+          ? statblocks.filter(sb => (sb.name||"").toLowerCase().includes(q) || (sb.url||"").toLowerCase().includes(q))
+          : statblocks)[0];
+        if (first) selectStatblock(first);
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      if (!confirm("Clear all rows?")) return;
+      rows = [
+        { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" },
+        { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" },
+        { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" },
+        { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" },
+      ];
+      selectedRowId = null;
+      renderRows();
+      renderPreview();
+    });
+
+    addRowBtn.addEventListener("click", () => {
+      const newRow = { id: nextId++, score: "", name: "", ac: "", hp: "", url: "" };
+      rows.push(newRow);
+      renderRows();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && pickerOpen) closePicker();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        openPicker();
+      }
+    });
+
+    // Init
+    renderRows();
+    renderPreview();
+    loadStatblocks();
+  </script>
+</body>
+</html>
