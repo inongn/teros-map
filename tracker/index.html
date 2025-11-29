@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Initiative Tracker</title>
+  <title>Iniciativa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -55,15 +55,15 @@
     <div class="header">
       <div></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="openPicker" class="btn tonal">Pick from sitemap</button>
-        <button id="addRow" class="btn">Add row</button>
-        <button id="clearRows" class="btn danger">Clear</button>
+        <button id="openPicker" class="btn tonal">Escoger</button>
+        <button id="addRow" class="btn">Nueva fila</button>
+        <button id="clearRows" class="btn danger">Despejar</button>
       </div>
     </div>
 
     <div class="table" role="table" aria-label="initiative table">
       <div style="display:grid;grid-template-columns: 60px 1.2fr 60px 60px 44px;">
-        <div class="th">Init</div><div class="th">Name</div><div class="th">AC</div><div class="th">HP</div><div class="th"></div>
+        <div class="th">Init</div><div class="th">Nombre</div><div class="th">AC</div><div class="th">HP</div><div class="th"></div>
       </div>
       <div id="rows"></div>
     </div>
@@ -71,11 +71,11 @@
     <!-- Preview area (new) -->
     <div class="preview" id="preview">
       <div class="preview-head">
-        <div id="previewLabel">No row selected</div>
+        <div id="previewLabel">Ninguan fila seleccionada</div>
         <div id="previewUrl" class="hint"></div>
       </div>
       <div class="preview-body" id="previewBody">
-        <div class="preview-empty">Select a row (or add from sitemap) to preview its page.</div>
+        <div class="preview-empty">Selecciona un combatiente.</div>
       </div>
     </div>
   </div>
@@ -84,9 +84,9 @@
   <div id="pickerBackdrop" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
       <div class="modal-head">
-        <div style="font-weight:650" id="pickerTitle">Choose a statblock</div>
-        <input class="search" id="pickerSearch" placeholder="Search by name or URL…" />
-        <button id="closePicker" class="btn">Close</button>
+        <div style="font-weight:650" id="pickerTitle">Escoger combatiente</div>
+        <input class="search" id="pickerSearch" placeholder="Buscar por nombre…" />
+        <button id="closePicker" class="btn">Cerrar</button>
       </div>
       <div class="modal-body">
         <div id="pickerList" style="display:grid;gap:10px"></div>
