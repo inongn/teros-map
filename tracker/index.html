@@ -182,13 +182,13 @@
 
         // Init
         const cScore = td();
-        const iScore = input(r.score, "roll", "number");
+        const iScore = input(r.score, "#", "number");
         iScore.addEventListener("input", (e) => updateField(r.id, "score", e.target.value));
         cScore.appendChild(iScore);
 
         // Name
         const cName = td();
-        const iName = input(r.name, "Creature or PC");
+        const iName = input(r.name, "Nombre");
         iName.addEventListener("input", (e) => updateField(r.id, "name", e.target.value));
         cName.appendChild(iName);
 
@@ -377,11 +377,11 @@
       const row = rows.find(r => r.id === selectedRowId);
       previewBody.innerHTML = "";
       if (!row) {
-        previewLabel.textContent = "No row selected";
+        previewLabel.textContent = "Ningún combatiente";
         previewUrl.textContent = "";
         const empty = document.createElement("div");
         empty.className = "preview-empty";
-        empty.textContent = "Select a row (or add from sitemap) to preview its page.";
+        empty.textContent = "Selecciona un combatiente.";
         previewBody.appendChild(empty);
         return;
       }
