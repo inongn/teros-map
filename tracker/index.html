@@ -400,7 +400,6 @@
 
       const frame = document.createElement("iframe");
       // sandbox for safety; allow-same-origin often needed to render styles; remove if not desired
-      frame.setAttribute("sandbox", "allow-same-origin allow-forms allow-scripts");
       frame.setAttribute("src", url);
       frame.addEventListener("error", () => {
         const msg = document.createElement("div");
